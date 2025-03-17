@@ -18,6 +18,7 @@ data.tar.gz
 .idea/
 outputs/
 
+*.out
 data
 
 # Created by https://www.gitignore.io/api/python

@@ -58,10 +58,10 @@ _conj = lambda x: torch.cat([x, x.conj()], dim=-1)
 _c2r = torch.view_as_real
 _r2c = torch.view_as_complex
 
-if torch.__version__.startswith('1.10'):
-    _resolve_conj = lambda x: x.conj().resolve_conj()
-else:
-    _resolve_conj = lambda x: x.conj()
+# if torch.__version__.startswith('1.10'):
+_resolve_conj = lambda x: x.conj().resolve_conj()
+# else:
+#     _resolve_conj = lambda x: x.conj()
 
 def bilinear(dt, A, B=None):
     """
@@ -213,8 +213,9 @@ class SSKernelNPLR(OptimModule):
 
         # Register parameters
         # C is a regular parameter, not state
-        # self.C = nn.Parameter(_c2r(C.conj().resolve_conj()))
-        self.C = nn.Parameter(_c2r(_resolve_conj(C)))
+        self.C = nn.Parameter(_c2r(
+            _resolve_conj(C) # C.conj().resolve_conj()
+            ))
         train = False
         if trainable is None: trainable = {}
         if trainable == False: trainable = {}

@@ -1,21 +1,21 @@
-# numpy
-# scipy
-# pandas
-# scikit-learn
-# sktime
-# matplotlib
-# tqdm
-# rich
-# pytorch-lightning
-# hydra-core
-# munch
-# omegaconf
-# wandb
-# einops
-# opt_einsum
-# pykeops
-# cmake
+numpy
+scipy
+pandas
+scikit-learn
+sktime
+matplotlib
+tqdm
+rich
+pytorch-lightning
+hydra-core
+munch
+omegaconf
+wandb
+einops
+opt_einsum
+pykeops
+cmake
 # torchtext
-# datasets
-# transformers
-# pytorch-fast-transformers
+datasets
+transformers
+pytorch-fast-transformers

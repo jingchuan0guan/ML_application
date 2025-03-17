@@ -238,15 +238,13 @@ class SequenceLightningModule(pl.LightningModule):
             sync_dist=True,
         )
         return loss
-
+    
     def on_train_epoch_start(self):
         # Reset training torchmetrics
         self.task._reset_torchmetrics("train")
 
-    # def training_epoch_end(self, outputs): # Log training torchmetrics
-    #     super().training_epoch_end(outputs)
-    def on_train_epoch_end(self, outputs):
-        super().on_train_epoch_end(outputs)
+    def on_train_epoch_end(self,): # outputs): # Log training torchmetrics... training_epoch_end is deprecated.
+        super().on_train_epoch_end() # outputs)
         self.log_dict(
             {f"train/{k}": v for k, v in self.task.get_torchmetrics("train").items()},
             on_step=False,
@@ -261,9 +259,9 @@ class SequenceLightningModule(pl.LightningModule):
         for name in self.val_loader_names:
             self.task._reset_torchmetrics(name)
 
-    def on_validation_epoch_end(self, outputs): #on_validation_epoch_end
+    def on_validation_epoch_end(self,): # outputs): #on_validation_epoch_end
         # Log all validation torchmetrics
-        super().on_validation_epoch_end(outputs)
+        super().on_validation_epoch_end()# outputs)
         for name in self.val_loader_names:
             self.log_dict(
                 {f"{name}/{k}": v for k, v in self.task.get_torchmetrics(name).items()},
@@ -279,9 +277,9 @@ class SequenceLightningModule(pl.LightningModule):
         for name in self.test_loader_names:
             self.task._reset_torchmetrics(name)
 
-    def test_epoch_end(self, outputs):
+    def test_epoch_end(self, ): # outputs):
         # Log all test torchmetrics
-        super().test_epoch_end(outputs)
+        super().test_epoch_end()# outputs)
         for name in self.test_loader_names:
             self.log_dict(
                 {f"{name}/{k}": v for k, v in self.task.get_torchmetrics(name).items()},
@@ -445,8 +443,6 @@ class SequenceLightningModule(pl.LightningModule):
 
 
 ### pytorch-lightning utils and entrypoint
-
-
 def create_trainer(config, **kwargs):
     callbacks: List[pl.Callback] = []
     logger = None
