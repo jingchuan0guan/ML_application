@@ -1,0 +1,20 @@
+# _target_: pytorch_lightning.Trainer
+
+accelerator: "cuda"
+# accelerator: ddp # controlled by train.ddp instead previous versions?
+# gpus: 1 # set `1` to train on GPU, `0` to train on CPU only
+devices: 7 # plugins: "ddp"
+
+accumulate_grad_batches: 1
+max_epochs: 200
+gradient_clip_val: 2.0
+gradient_clip_algorithm: "norm"
+
+log_every_n_steps: 10
+limit_train_batches: 1.0  # train on full dataset, can be used to toggle quick run
+limit_val_batches: 1.0  # train on full dataset, can be used to toggle quick run
+# weights_summary: top # Set to 'full' to see every layer # do not exist in latest versions
+# progress_bar_refresh_rate: 1
+enable_progress_bar: True
+# gradient_clip_val: 2.0 # Set to 2 to track norms of gradients ... following is deprecated. track_grad_norm: -1 
+# resume_from_checkpoint: null

@@ -10,16 +10,6 @@ from pytorch_lightning.utilities import rank_zero_only
 from pytorch_lightning.utilities.parsing import AttributeDict
 from pytorch_lightning.utilities.types import STEP_OUTPUT
 
-# def on_train_batch_start(self, batch, batch_idx, dataloader_idx=None):
-# def on_train_batch_start(self,):
-#     super().on_train_batch_start(dataloader_idx=None)
-#     pass
-# class CustomCallback(pl.Callback):
-#     def on_train_batch_start(self, trainer, pl_module, batch, batch_idx, dataloader_idx=None):
-#         pass  # ここに処理を入れる場合は追加
-# class CustomTimer(Timer):
-#     def on_train_batch_start(self, trainer, pl_module, batch, batch_idx, dataloader_idx=None):
-#         super().on_train_batch_start(trainer, pl_module, batch, batch_idx, dataloader_idx)
 
 class Timer(Callback):
     """Monitor the speed of each step and each epoch.
