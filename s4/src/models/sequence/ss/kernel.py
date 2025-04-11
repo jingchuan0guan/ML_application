@@ -447,7 +447,7 @@ class SSKernelNPLR(OptimModule):
 
         u: (H) input
         state: (H, N/2) state with conjugate pairs
-          Optionally, the state can have last dimension N
+        Optionally, the state can have last dimension N
         Returns: same shape as state
         """
         C = _r2c(self.C) # View used for dtype/device
@@ -674,8 +674,9 @@ class SSKernelSlow(OptimModule):
 
 
 class SSKernelDiag(OptimModule):
-    """ Version using (complex) diagonal state matrix. Main difference is this uses the ZOH instead of Bilinear transform. Note that it is slower and less memory efficient than the NPLR kernel because of lack of kernel support.
-
+    """
+    Version using (complex) diagonal state matrix. Main difference is this uses the ZOH instead of Bilinear transform.
+    Note that it is slower and less memory efficient than the NPLR kernel because of lack of kernel support.
     """
 
     def __init__(

@@ -53,7 +53,7 @@ class S4(nn.Module):
         """
         d_state: the dimension of the state, also denoted by N
         l_max: the maximum sequence length, also denoted by L
-          if this is not known at model creation, set l_max=1
+        if this is not known at model creation, set l_max=1
         channels: can be interpreted as a number of "heads"
         bidirectional: bidirectional
         dropout: standard dropout argument

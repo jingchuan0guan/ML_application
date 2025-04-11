@@ -2,7 +2,7 @@
 defaults:
   - _self_
   - experiment: base # Specifies model and pipeline, equivalent to next two lines
-  # - model: s4 # Model backbone
+  # - model: s4d # Model backbone
   # - pipeline: cifar # Specifies collection of configs, equivalent to next 5 lines
   # Pipelines should specify /loader, /dataset, /task, /encoder, /decoder (ideally in that order)
   # # - loader: torch # Dataloader (e.g. handles batches)

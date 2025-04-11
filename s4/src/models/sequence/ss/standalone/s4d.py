@@ -66,39 +66,61 @@ def LinearActivation(
     return linear
 
 
+
+def roots_of_unity(n):
+    k = torch.arange(n)
+    theta = 2 * torch.pi * k / n
+    roots = torch.cos(theta) + 1j * torch.sin(theta)
+    return roots
+
 """ HiPPO utilities """
-
-def random_dplr(N, H=1, scaling='inverse', real_scale=1.0, imag_scale=1.0):
+def A_eigvals(N, H=1, rho=0.9, imag_scaling='inverse', eigvals_name="conjugate_linear", n_conjugate=2):
     dtype = torch.cfloat
-
     pi = torch.tensor(np.pi)
-    real_part = .5 * torch.ones(H, N//2)
-    imag_part = repeat(torch.arange(N//2), 'n -> h n', h=H)
+    
+    n=N//2
+    if eigvals_name in ["linear", "conjugate_linear"]:
+        if eigvals_name == "linear":
+            w = torch.arange(n)
+        elif eigvals_name == "conjugate_linear":
+            q = n % n_conjugate
+            if q>0:
+                p = 1 + n//n_conjugate
+                w = [roots_of_unity(n_conjugate)*i/p for i in range(2, p+1)]    
+                w.extend([roots_of_unity(q)])
+            elif q==0:
+                p = n//n_conjugate  
+                w = [roots_of_unity(n_conjugate)*i/p for i in range(1, p+1)]    
+            else:
+                raise KeyError
+            # print(w)
+            w = torch.cat(w, dim=0).to(dtype)
+            print("n p q", n, p,q)
+    w = repeat(rho * w, 'n -> h n', h=H)
 
-    real_part = real_scale * real_part
-    if scaling == 'random':
-        imag_part = torch.randn(H, N//2)
-    elif scaling == 'linear':
-        imag_part = pi * imag_part
-    elif scaling == 'inverse': # Based on asymptotics of the default HiPPO matrix
-        imag_part = 1/pi * N * (N/(1+2*imag_part)-1)
-    else: raise NotImplementedError
-    imag_part = imag_scale * imag_part
-    w = -real_part + 1j * imag_part
-
-
+    if imag_scaling in ['random', 'linear', 'inverse']:
+        real_part = .5 * torch.ones(H, N//2)
+        imag_part = repeat(torch.arange(N//2), 'n -> h n', h=H)
+        if imag_scaling == 'random':
+            imag_part = torch.randn(H, N//2)
+        elif imag_scaling == 'linear':
+            imag_part = pi * imag_part
+        elif imag_scaling == 'inverse': # Based on asymptotics of the default HiPPO matrix
+            imag_part = 1/pi * N * (N/(1+2*imag_part)-1)
+        # else: raise NotImplementedError
+        w = -real_part + 1j * imag_part
+    
     B = torch.randn(H, N//2, dtype=dtype)
-
     norm = -B/w # (H, N) # Result if you integrate the kernel with constant 1 function
     zeta = 2*torch.sum(torch.abs(norm)**2, dim=-1, keepdim=True) # Variance with a random C vector
     B = B / zeta**.5
-
     return w, B
 
 
-class SSKernelDiag(nn.Module):
-    """ Version using (complex) diagonal state matrix. Note that it is slower and less memory efficient than the NPLR kernel because of lack of kernel support.
 
+class SSKernelDiag(nn.Module):
+    """ 
+    Version using (complex) diagonal state matrix. Note that it is slower and less memory efficient than the NPLR kernel because of lack of kernel support.
     """
 
     def __init__(
@@ -204,7 +226,7 @@ class S4DKernel(nn.Module):
         self,
         H,
         N=64,
-        scaling="inverse",
+        rho=0.9, imag_scaling='inverse', eigvals_name="conjugate_linear", n_conjugate=2,
         channels=1, # 1-dim to C-dim map; can think of C as having separate "heads"
         dt_min=0.001,
         dt_max=0.1,
@@ -227,7 +249,7 @@ class S4DKernel(nn.Module):
 
         # Compute the preprocessed representation
         # Generate low rank correction p for the measure
-        w, B = random_dplr(self.N, H=n_ssm, scaling=scaling)
+        w, B = A_eigvals(self.N, H=n_ssm, rho=rho, imag_scaling=imag_scaling, eigvals_name=eigvals_name, n_conjugate=n_conjugate)
 
         C = torch.randn(channels, self.H, self.N // 2, dtype=cdtype)
 

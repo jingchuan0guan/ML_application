@@ -2,7 +2,7 @@
 
 accelerator: "cuda"
 # gpus: 1 # set `1` to train on GPU, `0` to train on CPU only
-devices: 7 # plugins: "ddp"
+devices: [0,1,2,3, 4,5,6,7] #7 # plugins: "ddp"
 # accelerator: ddp # controlled by train.ddp instead
 
 accumulate_grad_batches: 1

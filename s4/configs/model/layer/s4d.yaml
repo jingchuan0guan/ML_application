@@ -5,7 +5,12 @@ bidirectional: false
 activation: gelu
 postact: null
 dropout: ${..dropout} # Same as null
-scaling: inverse
+
+imag_scaling: None # inverse
+rho: 0.9
+eigvals_name: conjugate_linear
+n_conjugate: 2
+
 dt_min: 0.001
 dt_max: 0.1
 lr: 0.001
