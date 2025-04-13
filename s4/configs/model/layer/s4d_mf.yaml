@@ -1,4 +1,4 @@
-_name_: s4d
+_name_: s4d_mf
 d_state: 64
 channels: 1
 bidirectional: false
@@ -6,12 +6,12 @@ activation: gelu
 postact: null
 dropout: ${..dropout} # Same as null
 
-imag_scaling: None # inverse
-# rho: 0.9
-# eigvals_name: conjugate_linear
-# n_conjugate: 2
+rho: 0.9
+dt: 0.01
+eigvals_name: conjugate_linear
+n_conjugate: 2
 
-dt_min: 0.001
-dt_max: 0.1
+# dt_min: 0.001
+# dt_max: 0.1
 lr: 0.001
 n_ssm: 1

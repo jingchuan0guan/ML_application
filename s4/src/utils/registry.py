@@ -63,6 +63,7 @@ layer = {
     "s4": "src.models.sequence.ss.s4.S4",
     "standalone": "src.models.sequence.ss.standalone.s4.S4",
     "s4d": "src.models.sequence.ss.standalone.s4d.S4D",
+    "s4d_mf": "src.models.sequence.ss.standalone.s4d_mf.S4D",
     "s4_2d": "src.models.sequence.ss.s4_2d.StateSpace2D",
     "s4nd": "src.models.sequence.ss.s4_nd.S4ND",
     "ff": "src.models.sequence.ff.FF",

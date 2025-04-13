@@ -1,6 +1,5 @@
 """ Standalone version of Structured (Sequence) State Space (S4) model. """
 
-
 import logging
 from functools import partial
 import math
@@ -25,9 +24,7 @@ else:
     _resolve_conj = lambda x: x.conj()
 
 
-
 """ simple nn.Module components """
-
 def Activation(activation=None, dim=-1):
     if activation in [ None, 'id', 'identity', 'linear' ]:
         return nn.Identity()
@@ -74,11 +71,12 @@ def roots_of_unity(n):
     return roots
 
 """ HiPPO utilities """
-def A_eigvals(N, H=1, rho=0.9, imag_scaling='inverse', eigvals_name="conjugate_linear", n_conjugate=2):
-    dtype = torch.cfloat
-    pi = torch.tensor(np.pi)
-    
-    n=N//2
+def A_eigvals(
+    N, H=1, eigvals_name="conjugate_linear", n_conjugate=2,
+    rho=0.9, dt=1, # specify both of them
+    ):
+    dtype = torch.cfloat # pi = torch.tensor(np.pi)
+    n = N//2
     if eigvals_name in ["linear", "conjugate_linear"]:
         if eigvals_name == "linear":
             w = torch.arange(n)
@@ -95,20 +93,8 @@ def A_eigvals(N, H=1, rho=0.9, imag_scaling='inverse', eigvals_name="conjugate_l
                 raise KeyError
             # print(w)
             w = torch.cat(w, dim=0).to(dtype)
-            print("n p q", n, p,q)
-    w = repeat(-rho * w, 'n -> h n', h=H)
-
-    if imag_scaling in ['random', 'linear', 'inverse']:
-        real_part = .5 * torch.ones(H, N//2)
-        imag_part = repeat(torch.arange(N//2), 'n -> h n', h=H)
-        if imag_scaling == 'random':
-            imag_part = torch.randn(H, N//2)
-        elif imag_scaling == 'linear':
-            imag_part = pi * imag_part
-        elif imag_scaling == 'inverse': # Based on asymptotics of the default HiPPO matrix
-            imag_part = 1/pi * N * (N/(1+2*imag_part)-1)
-        # else: raise NotImplementedError
-        w = -real_part + 1j * imag_part
+            print("n p q", n, p, q)
+    w = repeat((rho*w)**(dt), 'n -> h n', h=H)
     
     B = torch.randn(H, N//2, dtype=dtype)
     norm = -B/w # (H, N) # Result if you integrate the kernel with constant 1 function
@@ -123,71 +109,69 @@ class SSKernelDiag(nn.Module):
     Version using (complex) diagonal state matrix. Note that it is slower and less memory efficient than the NPLR kernel because of lack of kernel support.
     """
 
-    def __init__(
-        self,
-        w, C, log_dt,
-        lr=None,
-    ):
-
+    def __init__(self, A_eigvals, C, H, lr=None, ):
         super().__init__()
 
         # Rank of low-rank correction
-        assert w.size(-1) == C.size(-1)
-        self.H = log_dt.size(-1)
-        self.N = w.size(-1)
-        assert self.H % w.size(0) == 0
-        self.copies = self.H // w.size(0)
+        assert A_eigvals.size(-1) == C.size(-1)
+        self.H = H # log_dt.size(-1)
+        self.N = A_eigvals.size(-1)
+        assert self.H % A_eigvals.size(0) == 0
+        self.copies = self.H // A_eigvals.size(0)
 
         # Broadcast everything to correct shapes
         C = C.expand(torch.broadcast_shapes(C.shape, (1, self.H, self.N))) # (H, C, N)
 
         # Register parameters
         self.C = nn.Parameter(_c2r(_resolve_conj(C)))
-        self.register("log_dt", log_dt, True, lr, 0.0)
-
-        log_w_real = torch.log(-w.real + 1e-4)
-        w_imag = w.imag
-        self.register("log_w_real", log_w_real, True, lr, 0.0)
-        self.register("w_imag", w_imag, True, lr, 0.0)
-
+        # self.register("log_dt", log_dt, False)
+        
+        A_eigvals_abslog = np.log(torch.abs(A_eigvals) + 1e-6)
+        A_eigvals_phase = torch.angle(A_eigvals)
+        self.register("A_eigvals_abslog", A_eigvals_abslog, True, lr, 0.0)
+        self.register("A_eigvals_phase", A_eigvals_phase, True, lr, 0.0)
+        # log_w_real = torch.log(-A_eigvals.real + 1e-5)
+        # w_imag = A_eigvals.imag
+        # self.register("log_w_real", log_w_real, True, lr, 0.0)
+        # self.register("w_imag", w_imag, True, lr, 0.0)
 
     def _w(self):
-        # Get the internal w (diagonal) parameter
-        w_real = -torch.exp(self.log_w_real)
-        w_imag = self.w_imag
-        w = w_real + 1j * w_imag
-        w = repeat(w, 't n -> (v t) n', v=self.copies) # (H N)
-        return w
+        # Get the internal A_eigvals (diagonal) parameter
+        # w_real = -torch.exp(self.log_w_real)
+        # w_imag = self.w_imag
+        A_eigvals = torch.exp(self.A_eigvals_abslog + 1j*self.A_eigvals_phase) # w_real + 1j * w_imag
+        A_eigvals = repeat(A_eigvals, 't n -> (v t) n', v=self.copies) # (H N)
+        return A_eigvals
 
     def forward(self, L):
         """
         returns: (..., c, L) where c is number of channels (default 1)
         """
-
-        dt = torch.exp(self.log_dt) # (H)
-        C = _r2c(self.C) # (C H N)
-        w = self._w() # (H N)
-
+        A_eigvals = self._w() # (H N)  == torch.exp(dtA)
+        print(A_eigvals)
         # Incorporate dt into A
-        dtA = w * dt.unsqueeze(-1)  # (H N)
+        # dt = torch.exp(self.log_dt) # (H)
+        # dtA = w * dt.unsqueeze(-1)  # (H N)
+        dtA = torch.log(A_eigvals)
+        
+        C = _r2c(self.C) # (C H N)
 
         # Power up
-        K = dtA.unsqueeze(-1) * torch.arange(L, device=w.device) # (H N L)
-        C = C * (torch.exp(dtA)-1.) / w
+        K = dtA.unsqueeze(-1) * torch.arange(L, device=A_eigvals.device) # (H N L)
+        C = C * (A_eigvals - 1.) / dtA
         K = contract('chn, hnl -> chl', C, torch.exp(K))
         K = 2*K.real
 
         return K
 
     def setup_step(self):
-        dt = torch.exp(self.log_dt) # (H)
+        # dt = torch.exp(self.log_dt) # (H)
         C = _r2c(self.C) # (C H N)
-        w = self._w() # (H N)
-
-        # Incorporate dt into A
-        dtA = w * dt.unsqueeze(-1)  # (H N)
-        self.dA = torch.exp(dtA) # (H N)
-        self.dC = C * (torch.exp(dtA)-1.) / w # (C H N)
+        self.dA = self._w() # (H N)
+        dtA = torch.log(self.dA)
+        
+        # self.dA = torch.exp(dtA) # (H N)
+        self.dC = C * (self.dA - 1.) / dtA # (C H N)
         self.dB = self.dC.new_ones(self.H, self.N) # (H N)
 
     def default_state(self, *batch_shape):
@@ -226,10 +210,9 @@ class S4DKernel(nn.Module):
         self,
         H,
         N=64,
-        rho=0.9, imag_scaling='inverse', eigvals_name="conjugate_linear", n_conjugate=2,
+        eigvals_name="conjugate_linear", n_conjugate=2, rho=0.9, dt=0.1, 
         channels=1, # 1-dim to C-dim map; can think of C as having separate "heads"
-        dt_min=0.001,
-        dt_max=0.1,
+        # dt_min=0.001, dt_max=0.1,
         lr=None, # Hook to set LR of SSM parameters differently
         n_ssm=1, # Copies of the ODE parameters A and B. Must divide H
         **kernel_args,
@@ -243,11 +226,11 @@ class S4DKernel(nn.Module):
         self.n_ssm = n_ssm
 
         # Generate dt
-        log_dt = torch.rand(self.H, dtype=dtype) * (math.log(dt_max) - math.log(dt_min)) + math.log(dt_min)
+        # log_dt = torch.zeros(self.H, dtype=dtype)
 
         # Compute the preprocessed representation
         # Generate low rank correction p for the measure
-        w, B = A_eigvals(self.N, H=n_ssm, rho=rho, imag_scaling=imag_scaling, eigvals_name=eigvals_name, n_conjugate=n_conjugate)
+        w, B = A_eigvals(self.N, H=n_ssm, eigvals_name=eigvals_name, n_conjugate=n_conjugate, rho=rho, dt=dt,)
 
         C = torch.randn(channels, self.H, self.N // 2, dtype=cdtype)
 
@@ -259,7 +242,7 @@ class S4DKernel(nn.Module):
         # Combine B and C using structure of diagonal SSM
         C = C * repeat(B, 't n -> (v t) n', v=H//self.n_ssm)
         self.kernel = SSKernelDiag(
-            w, C, log_dt,
+            w, C, self.H, 
             lr=lr,
             **kernel_args,
         )
