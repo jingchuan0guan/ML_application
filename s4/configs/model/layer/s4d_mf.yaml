@@ -6,8 +6,8 @@ activation: gelu
 postact: null
 dropout: ${..dropout} # Same as null
 
-rho: 0.9
-dt: 0.01
+rho: 0.995
+dt: 1
 eigvals_name: conjugate_linear
 n_conjugate: 2
 
