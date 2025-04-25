@@ -292,11 +292,11 @@ class SequenceLightningModule(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         loss = self._shared_step(batch, batch_idx, prefix="train")
-        for name, param in self.named_parameters():
-            if param.grad is not None:
-                print(f"{name}: grad norm = {param.grad.norm().item()}")
-            else:
-                print(f"{name}: NO GRADIENT!")
+        # for name, param in self.named_parameters():
+        #     if param.grad is not None:
+        #         print(f"{name}: grad norm = {param.grad.norm().item()}")
+        #     else:
+        #         print(f"{name}: NO GRADIENT!")
         # Log the loss explicitly so it shows up in WandB
         # Note that this currently runs into a bug in the progress bar with ddp (as of 1.4.6)
         # https://github.com/PyTorchLightning/pytorch-lightning/pull/9142

@@ -93,7 +93,7 @@ def A_eigvals(
                 raise KeyError
             # print(w)
             w = torch.cat(w, dim=0).to(dtype)
-            print("n p q", n, p, q)
+            # print("n p q", n, p, q)
     w = repeat((rho*w)**(dt), 'n -> h n', h=H)
     
     B = torch.randn(H, N//2, dtype=dtype)
@@ -148,7 +148,7 @@ class SSKernelDiag(nn.Module):
         returns: (..., c, L) where c is number of channels (default 1)
         """
         A_eigvals = self._w() # (H N)  == torch.exp(dtA)
-        print(A_eigvals)
+        # print(A_eigvals)
         # Incorporate dt into A
         # dt = torch.exp(self.log_dt) # (H)
         # dtA = w * dt.unsqueeze(-1)  # (H N)
