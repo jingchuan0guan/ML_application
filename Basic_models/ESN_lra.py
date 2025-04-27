@@ -118,7 +118,6 @@ class BatchLRReadout(Linear):
         self.bias = sol[..., :1, :]
         return self.weight, self.bias
 
-
 def calc_batch_nrmse(y, yhat):
     mse = y - yhat
     mse = (mse**2).mean(axis=-2)
@@ -126,17 +125,11 @@ def calc_batch_nrmse(y, yhat):
     nrmse = (mse / var) ** 0.5
     return nrmse
 
-def create_setup(seed, input_dim, dim_rv, rho, a=None, f=np.tanh, bound=1.0, bias=0.0, cls=BatchLRReadout):
-    rnd = np.random.default_rng(seed)
-    w_in = Linear(input_dim, dim_rv, bound=bound, bias=bias, rnd=rnd)
-    net = ESN(dim_rv, sr=rho, f=f, a=a, rnd=rnd)
-    w_out = cls(input_dim=dim_rv, output_dim=1)
-    return w_in, net, w_out
 
+### newly defined
 def net_out_batch_last_state(net, w_in, w_out, x0, T, batch_size, dataloader, num_patch, train=False):
     y_out_arr, pre_arr, acc_arr, nrmse_arr = [],[],[],[]
     for idx in trange(T):
-        xs = np.zeros((*x0.shape[:-1], batch_size, x0.shape[-1]))
         datas, labels = dataloader.__next__()
         x=x0
         for p_rep in range(num_patch):
@@ -145,25 +138,52 @@ def net_out_batch_last_state(net, w_in, w_out, x0, T, batch_size, dataloader, nu
         if train:
             out = w_out.train(x, labels)
         
-        y_out = w_out(xs)
+        y_out = w_out(x)
         pre = np.round(y_out).astype(int)
         acc = np.sum(pre == labels)/labels.shape[0]
         nrmse = calc_batch_nrmse(labels, y_out)
         y_out_arr.append(y_out), pre_arr.append(pre), acc_arr.append(acc), nrmse_arr.append(nrmse)
     return y_out_arr, pre_arr, acc_arr, nrmse_arr
 
+def net_out_batch_all_states(net, w_in, w_out, x0, T, batch_size, dataloader, num_patch, train=False):
+    y_out_arr, pre_arr, acc_arr, nrmse_arr = [],[],[],[]
+    for idx in trange(T):
+        xs = np.zeros((*x0.shape[:-1], num_patch, x0.shape[-1]))
+        datas, labels = dataloader.__next__()
+        x=x0
+        for p_rep in range(num_patch):
+            x = net(x, w_in(datas[..., p_rep, :]))
+            xs[..., p_rep, :]=x
+        xs = xs.reshape(batch_size, -1)
+        if train:
+            out = w_out.train(xs, labels)
+        
+        y_out = w_out(xs)
+        pre = np.round(y_out).astype(int)
+        acc = np.sum(pre == labels)/labels.shape[0]
+        nrmse = calc_batch_nrmse(labels, y_out)
+        y_out_arr.append(y_out), pre_arr.append(pre), acc_arr.append(acc), nrmse_arr.append(nrmse)
+    return np.array(y_out_arr), np.array(pre_arr), np.array(acc_arr), np.array(nrmse_arr)
+
 def train_and_eval(
-    w_in, net, w_out, batch_size, num_patch, dataloader_cls, seed=0,
-    # patch_size=img_size, 
+    w_in, net, w_out, image_paths, labels, batch_size, num_patch, dataloader_cls, seed=0,
+    learning_type=["all_states", "last_state"][0],
     t_washout=1000, t_train=2000, t_eval=1000,
     ):
     time_info = dict(t_washout=t_washout, t_train=t_train, t_eval=t_eval)
     dataloader = dataloader_cls(
-        num_samples=(t_train+t_eval)*batch_size, batch_size=batch_size, seed=seed)
+        num_samples=(t_train+t_eval)*batch_size, image_paths=image_paths, labels=labels,
+        batch_size=batch_size, seed=seed
+        )
     
     x0 = np.zeros((batch_size, net.dim_rv))
     for idx in trange(t_washout):
         x0 = net(x0, w_in(np.zeros((batch_size, w_in.input_dim))) )
     
-    train_out=net_out_batch_last_state(net, w_in, w_out, x0, t_train, batch_size, dataloader, num_patch, train=True)
-    valid_out=net_out_batch_last_state(net, w_in, w_out, x0, t_eval, batch_size, dataloader, num_patch, train=False)
+    if learning_type=="last_state":
+        train_out=net_out_batch_last_state(net, w_in, w_out, x0, t_train, batch_size, dataloader, num_patch, train=True)
+        valid_out=net_out_batch_last_state(net, w_in, w_out, x0, t_eval, batch_size, dataloader, num_patch, train=False)
+    if learning_type=="all_states":
+        train_out=net_out_batch_all_states(net, w_in, w_out, x0, t_train, batch_size, dataloader, num_patch, train=True)
+        valid_out=net_out_batch_all_states(net, w_in, w_out, x0, t_eval, batch_size, dataloader, num_patch, train=False)
+    return train_out, valid_out

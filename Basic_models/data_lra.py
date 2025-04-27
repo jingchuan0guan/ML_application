@@ -2,50 +2,48 @@ import os
 import numpy as np
 from PIL import Image
 # /home/kan/ML_application/s4/data/pathfinder/pathfinder32/curv_baseline/metadata/
+def load_pathfider_metafiles(
+    img_size = [32, 64, 128, 256][0],
+    difficulty = ["E", "M", "H"][0], # easy, intermediate, hard
+    ROOT_DIR = "", ##### change here
+    ):
+    DIFFICULT_DIR={"E":"curv_baseline/", "M":"curv_contour_length_9/", "H":"curv_contour_length_14/"}
+    BASE_DIR = ROOT_DIR + f"pathfinder{img_size}/" + DIFFICULT_DIR[difficulty]
+    METADATA_DIR = os.path.join(BASE_DIR, 'metadata')
+    meta_files = [os.path.join(METADATA_DIR, fname) for fname in os.listdir(METADATA_DIR) if fname.endswith('.npy')]
 
-img_size = [32, 64, 128, 256][0]
-difficulty = ["E", "M", "H"][0] # easy, intermediate, hard
-
-ROOT_DIR = "/home/kan/ML_application/s4/data/pathfinder/" ##### change here
-DIFFICULT_DIR={"E":"curv_baseline/", "M":"curv_contour_length_9/", "H":"curv_contour_length_14/"}
-BASE_DIR = ROOT_DIR + f"pathfinder{img_size}/" + DIFFICULT_DIR[difficulty]
-METADATA_DIR = os.path.join(BASE_DIR, 'metadata')
-meta_files = [os.path.join(METADATA_DIR, fname) for fname in os.listdir(METADATA_DIR) if fname.endswith('.npy')]
-
-image_paths = []
-labels = []
-_load_counter = 0
-for fname in os.listdir(METADATA_DIR):
-    if not fname.endswith('.npy'):
-        continue
-    with open(os.path.join(METADATA_DIR, fname), 'r') as f:
-        lines = f.readlines()
-    len_metafile = len(lines)
-    # print("row len", len_metafile)
-    
-    for line in lines:
-        parts = line.strip().split(' ')
-        # print("row", parts)
-        if len(parts) < 4:
-            continue  # skip malformed lines
+    image_paths = []
+    labels = []
+    _load_counter = 0
+    for fname in os.listdir(METADATA_DIR):
+        if not fname.endswith('.npy'):
+            continue
+        with open(os.path.join(METADATA_DIR, fname), 'r') as f:
+            lines = f.readlines()
+        len_metafile = len(lines)
+        # print("row len", len_metafile)
         
-        dir_name, file_name, label = parts[0], parts[1], int(parts[3])
-        image_path = os.path.join(BASE_DIR, dir_name, file_name)
-        image_paths.append(image_path)
-        labels.append(label)
+        for line in lines:
+            parts = line.strip().split(' ')
+            # print("row", parts)
+            # if len(parts) < 4:
+            #     continue  # skip malformed lines
+            
+            dir_name, file_name, label = parts[0], parts[1], int(parts[3])
+            image_path = os.path.join(BASE_DIR, dir_name, file_name)
+            image_paths.append(image_path)
+            labels.append(label)
+        
+        _load_counter += len_metafile
     
-    _load_counter += len_metafile
-    # if _load_counter>len_metafile:
-    #     break
-
-print("metadata load counter:", _load_counter, " This is the number of all available files")
+    print("metadata load counter:", _load_counter, " This is the number of all available files")
+    return np.array(image_paths), np.array(labels)
 # images = [np.array(Image.open(p)) for p in image_paths]
 # print(f"Loaded {len(images)} images. First shape: {images[0].shape}, First label: {labels[0]}")
 
 class PathFinderDataLoader:
     def __init__(
-        self, num_samples, batch_size=32, seed=0, shuffle=True, normalize=True, drop_last=True,
-        image_paths=np.array(image_paths), labels=np.array(labels), ):
+        self, num_samples, image_paths, labels, batch_size=32, seed=0, shuffle=True, normalize=True, drop_last=True,):
         self.image_paths=image_paths
         self.labels=labels
         """

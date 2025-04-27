@@ -1,14 +1,57 @@
+import sys
 from data_lra import*
 from ESN_lra import*
+np.set_printoptions(threshold=np.inf, precision=10, linewidth=10**4)
 
-seed_setup, seed_dataset = 1234, 5678  # you can freely change here
-dim_rv, rho = 100, 0.9
-input_dim, batch_size = img_size, 32
+args=np.array(sys.argv)# 0:divs, 1:psid
+args=args[1:]
+print(args)
+
+img_size = int(args[0]) # [32, 64, 128, 256][2]
+difficulty = args[1] # ["E", "M", "H"][0] # easy, intermediate, hard
+
+image_paths, labels = load_pathfider_metafiles(
+    img_size = img_size, difficulty = difficulty,
+    ROOT_DIR = "/home/kan/ML_application/s4/data/pathfinder/", ##### change here
+    )
+input_dim = img_size # input_dim*num_patch == img_size**2
 num_patch = img_size
+"""
+you can freely change parameters in the below
+Note that
+"(dataset_info["t_train"]+dataset_info["t_eval"])*batch_size"
+should not exceed the number of "metadata load counter"
+"""
+seed_setup, seed_dataset = 1234, 5678
+dim_rv, rho = 100, 0.9
+batch_size = 64
 dataset_info = dict(t_washout=dim_rv, t_train=2000, t_eval=1000)
+learning_type=["all_states", "last_state"][0]
+assert (dataset_info["t_train"]+dataset_info["t_eval"])*batch_size < 2*10**5 # == metadata load counter
 
-w_in, net, w_out = create_setup(seed_setup, input_dim, dim_rv, rho, f=np.tanh)
-train_and_eval(
-    w_in, net, w_out, batch_size,
-    num_patch=img_size, dataloader_cls=PathFinderDataLoader, seed=seed_dataset,
-    **dataset_info)
+rnd = np.random.default_rng(seed_setup)
+w_in = Linear(input_dim, dim_rv, bound=1.0, bias=0.0, rnd=rnd)
+net = ESN(dim_rv, sr=rho, f=np.tanh, a=None, rnd=rnd)
+if learning_type=="last_state":
+    w_out = BatchLRReadout(input_dim=dim_rv, output_dim=1)
+if learning_type=="all_states":
+    w_out = BatchLRReadout(input_dim=num_patch*dim_rv, output_dim=1)
+
+train_out, valid_out = train_and_eval(
+    w_in, net, w_out, image_paths, labels,
+    batch_size, num_patch=img_size, dataloader_cls=PathFinderDataLoader, seed=seed_dataset,
+    learning_type=learning_type, **dataset_info)
+
+y_out_arr, pre_arr, acc_arr, nrmse_arr = train_out
+print("train")
+# print("y_out_arr:", y_out_arr)
+# print("pre_arr:", pre_arr.reshape(-1))
+print("acc_arr:", acc_arr)
+# print("nrmse_arr:", nrmse_arr)
+
+y_out_arr, pre_arr, acc_arr, nrmse_arr = valid_out
+print("valid")
+# print("y_out_arr:", y_out_arr)
+# print("pre_arr:", pre_arr.reshape(-1))
+print("acc_arr:", acc_arr)
+# print("nrmse_arr:", nrmse_arr)
