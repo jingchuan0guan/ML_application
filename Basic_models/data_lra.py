@@ -12,7 +12,6 @@ BASE_DIR = ROOT_DIR + f"pathfinder{img_size}/" + DIFFICULT_DIR[difficulty]
 METADATA_DIR = os.path.join(BASE_DIR, 'metadata')
 meta_files = [os.path.join(METADATA_DIR, fname) for fname in os.listdir(METADATA_DIR) if fname.endswith('.npy')]
 
-# データ格納リスト
 image_paths = []
 labels = []
 _load_counter = 0
@@ -39,12 +38,16 @@ for fname in os.listdir(METADATA_DIR):
     # if _load_counter>len_metafile:
     #     break
 
-print("meata load counter", _load_counter)
+print("metadata load counter:", _load_counter, " This is the number of all available files")
 # images = [np.array(Image.open(p)) for p in image_paths]
 # print(f"Loaded {len(images)} images. First shape: {images[0].shape}, First label: {labels[0]}")
 
 class PathFinderDataLoader:
-    def __init__(self, num_samples=32*32, batch_size=32, shuffle=True, normalize=True, drop_last=True, ):
+    def __init__(
+        self, num_samples, batch_size=32, seed=0, shuffle=True, normalize=True, drop_last=True,
+        image_paths=np.array(image_paths), labels=np.array(labels), ):
+        self.image_paths=image_paths
+        self.labels=labels
         """
         batch_size: int
         shuffle: bool
@@ -61,7 +64,9 @@ class PathFinderDataLoader:
         self.current_idx = 0
 
         if self.shuffle:
+            np.random.seed(seed)
             np.random.shuffle(self.indices)
+            # print(self.indices)
 
     def __iter__(self):
         return self.current_idx
@@ -75,20 +80,16 @@ class PathFinderDataLoader:
                 raise StopIteration
             end_idx = self.num_samples
 
-        batch_indices = self.indices[self.current_idx:end_idx]
-        batch_labels = labels[batch_indices]
+        batch_indices = self.indices[self.current_idx:end_idx] #np.array(self.indices[self.current_idx:end_idx], dtype=np.int16)
+        # print("batch_indices", batch_indices)
+        batch_labels = self.labels[batch_indices]
         batch_data = list(
-            map( lambda i: np.array(Image.open(image_paths[i])), batch_indices )
+            map( lambda i: np.array(Image.open(self.image_paths[i])), batch_indices )
             )
-        batch_labels, batch_data = np.array(batch_labels), np.array(batch_data)
-        # batch_data = []
-        # for i in batch_indices:
-        #     image_path = image_paths[i]
-        #     image = np.array(Image.open(image_path))
-        #     batch_data.append(image)
-        print("max value", np.max(batch_data))
+        batch_labels, batch_data = np.array(batch_labels).reshape(-1, 1), np.array(batch_data)
+        # print("max value", np.max(batch_data))
         if self.normalize:
-            batch_data = batch_data.astype(np.float32) #/ 255.0
+            batch_data = batch_data.astype(np.float32) / 255.0
         self.current_idx = end_idx
         return batch_data, batch_labels
 
@@ -98,10 +99,3 @@ class PathFinderDataLoader:
         else:
             return (self.num_samples + self.batch_size - 1) // self.batch_size
 
-# train_loader = PathfinderDataLoader(split="train", batch_size=16, shuffle=True)
-# valid_loader = PathfinderDataLoader(split="validation", batch_size=32, shuffle=False)
-
-# for x_batch, y_batch in train_loader:
-#     print("X batch:", x_batch.shape)  # e.g., (16, 65536, 3)
-#     print("Y batch:", y_batch.shape)  # e.g., (16,)
-#     break
