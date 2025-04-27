@@ -16,6 +16,7 @@ image_paths, labels = load_pathfider_metafiles(
     )
 input_dim = img_size # input_dim*num_patch == img_size**2
 num_patch = img_size
+
 """
 you can freely change parameters in the below
 Note that
@@ -33,9 +34,9 @@ rnd = np.random.default_rng(seed_setup)
 w_in = Linear(input_dim, dim_rv, bound=1.0, bias=0.0, rnd=rnd)
 net = ESN(dim_rv, sr=rho, f=np.tanh, a=None, rnd=rnd)
 if learning_type=="last_state":
-    w_out = BatchLRReadout(input_dim=dim_rv, output_dim=1)
+    w_out = BatchLR_Optimizer_Readout(input_dim=dim_rv, output_dim=1)
 if learning_type=="all_states":
-    w_out = BatchLRReadout(input_dim=num_patch*dim_rv, output_dim=1)
+    w_out = BatchLR_Optimizer_Readout(input_dim=num_patch*dim_rv, output_dim=1)
 
 train_out, valid_out = train_and_eval(
     w_in, net, w_out, image_paths, labels,

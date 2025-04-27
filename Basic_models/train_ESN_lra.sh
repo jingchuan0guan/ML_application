@@ -7,7 +7,6 @@ types=("E" "M" "H")  # タイプのリスト
 # ループしてコマンド実行
 for size in "${sizes[@]}"; do
   for type in "${types[@]}"; do
-    # ログファイル名の設定
     log_file="log/log_${size}_${type}.out"
     
     # nohupを使ってバックグラウンドで実行し、出力をログファイルに書き込む

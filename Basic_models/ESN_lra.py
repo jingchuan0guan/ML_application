@@ -104,19 +104,6 @@ class ESN(Module):
 
     def step(self, v: np.ndarray | None = None):
         self.x = self(self.x, v)
-        
-
-class BatchLRReadout(Linear):
-    def train(self, x: np.ndarray, y: np.ndarray):
-        # print("train shapes xy", x.shape, y.shape)
-        assert (x.ndim > 1) and (x.shape[-1] == self.input_dim)
-        assert (y.ndim > 1) and (y.shape[-1] == self.output_dim)
-        x_biased = np.ones((*x.shape[:-1], x.shape[-1] + 1), dtype=self.dtype)
-        x_biased[..., 1:] = x
-        sol = np.matmul(np.linalg.pinv(x_biased), y)
-        self.weight = sol[..., 1:, :].swapaxes(-2, -1)
-        self.bias = sol[..., :1, :]
-        return self.weight, self.bias
 
 def calc_batch_nrmse(y, yhat):
     mse = y - yhat
@@ -127,6 +114,57 @@ def calc_batch_nrmse(y, yhat):
 
 
 ### newly defined
+class BatchLR_Optimizer_Readout(Linear):
+    def __init__(self, lr=0.001, beta1=0.9, beta2=0.999, eps=1e-8,**kwargs):
+        super().__init__(**kwargs)
+        self.lr = lr
+        
+        ### for adam
+        self.t = 0
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.eps = eps
+        
+        self.m_w = np.zeros_like(self.weight)
+        self.v_w = np.zeros_like(self.weight)
+        self.m_b = np.zeros_like(self.bias)
+        self.v_b = np.zeros_like(self.bias)
+
+    def Adam_step_w(self, grad):
+        self.t += 1
+        self.m_w = self.beta1 * self.m_w + (1 - self.beta1) * grad
+        self.v_w = self.beta2 * self.v_w + (1 - self.beta2) * (grad ** 2)
+        m_hat = self.m_w / (1 - self.beta1 ** self.t)
+        v_hat = self.v_w / (1 - self.beta2 ** self.t)
+        self.weight -= self.lr * m_hat / (np.sqrt(v_hat) + self.eps)
+        # print(self.weight.shape)
+    
+    def Adam_step_b(self, grad):
+        self.m_b = self.beta1 * self.m_b + (1 - self.beta1) * grad
+        self.v_b = self.beta2 * self.v_b + (1 - self.beta2) * (grad ** 2)
+        m_hat = self.m_b / (1 - self.beta1 ** self.t)
+        v_hat = self.v_b / (1 - self.beta2 ** self.t)
+        self.bias -= self.lr * m_hat / (np.sqrt(v_hat) + self.eps)
+
+    def get_params(self):
+        return self.self.weight
+    
+    def train(self, x: np.ndarray, label: np.ndarray):
+        # print("train shapes xy", x.shape, label.shape)
+        assert (x.ndim > 1) and (x.shape[-1] == self.input_dim)
+        assert (label.ndim > 1) and (label.shape[-1] == self.output_dim)
+        batch_size = x.shape[-2]
+        
+        y = x @ self.weight.T + self.bias
+        error = y - label
+        grad_w = (2 / batch_size) * (error.T @ x)
+        grad_b = (2 / batch_size) * np.sum(error, axis=0)#, keepdims=True)
+        self.Adam_step_w(grad_w)
+        self.Adam_step_b(grad_b)
+        return self.weight, self.bias
+
+
+# choose one of the two
 def net_out_batch_last_state(net, w_in, w_out, x0, T, batch_size, dataloader, num_patch, train=False):
     y_out_arr, pre_arr, acc_arr, nrmse_arr = [],[],[],[]
     for idx in trange(T):
@@ -134,6 +172,7 @@ def net_out_batch_last_state(net, w_in, w_out, x0, T, batch_size, dataloader, nu
         x=x0
         for p_rep in range(num_patch):
             x = net(x, w_in(datas[..., p_rep, :]))
+            # print("x", x.shape)
         
         if train:
             out = w_out.train(x, labels)
@@ -153,6 +192,7 @@ def net_out_batch_all_states(net, w_in, w_out, x0, T, batch_size, dataloader, nu
         x=x0
         for p_rep in range(num_patch):
             x = net(x, w_in(datas[..., p_rep, :]))
+            # print("x", x.shape)
             xs[..., p_rep, :]=x
         xs = xs.reshape(batch_size, -1)
         if train:
