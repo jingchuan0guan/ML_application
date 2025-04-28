@@ -20,28 +20,34 @@ num_patch = img_size
 """
 you can freely change parameters in the below
 Note that
-"(dataset_info["t_train"]+dataset_info["t_eval"])*batch_size"
+" (dataset_info["t_train"]+dataset_info["t_eval"]) * batch_size "
 should not exceed the number of "metadata load counter"
 """
 seed_setup, seed_dataset = 1234, 5678
-dim_rv, rho = 100, 0.9
-batch_size = 64
-dataset_info = dict(t_washout=dim_rv, t_train=2000, t_eval=1000)
-learning_type=["all_states", "last_state"][0]
+dim_rv, rho = 100, 0.98
+batch_size = [64, 64*1500, 128*8][2]
+dataset_info = dict(
+    t_washout=dim_rv,
+    t_train=[2000, 1][1],
+    t_eval=[1000, 1][1],
+    )
+learning_type = ["all_states", "last_state"][0]
+optimizer = ["linreg", "adam"][0]
+readout_f = ["1", "2", "tanh"][2]
+state_expansion_ratio = {"1":1, "2":2, "tanh":1}[readout_f]
 assert (dataset_info["t_train"]+dataset_info["t_eval"])*batch_size < 2*10**5 # == metadata load counter
 
 rnd = np.random.default_rng(seed_setup)
 w_in = Linear(input_dim, dim_rv, bound=1.0, bias=0.0, rnd=rnd)
 net = ESN(dim_rv, sr=rho, f=np.tanh, a=None, rnd=rnd)
-if learning_type=="last_state":
-    w_out = BatchLR_Optimizer_Readout(input_dim=dim_rv, output_dim=1)
-if learning_type=="all_states":
-    w_out = BatchLR_Optimizer_Readout(input_dim=num_patch*dim_rv, output_dim=1)
+out_states_dim = {"last_state":dim_rv*state_expansion_ratio, "all_states":num_patch*dim_rv*state_expansion_ratio}[learning_type]
+w_out_cls = {"adam":BatchLR_Optimizer_Readout, "linreg":BatchLRReadout}[optimizer]
+w_out = w_out_cls( input_dim = out_states_dim, output_dim = 1 )
 
 train_out, valid_out = train_and_eval(
-    w_in, net, w_out, image_paths, labels,
+    net, w_in, w_out, image_paths, labels,
     batch_size, num_patch=img_size, dataloader_cls=PathFinderDataLoader, seed=seed_dataset,
-    learning_type=learning_type, **dataset_info)
+    learning_type=learning_type, readout_f=readout_f, **dataset_info)
 
 y_out_arr, pre_arr, acc_arr, nrmse_arr = train_out
 print("train")
