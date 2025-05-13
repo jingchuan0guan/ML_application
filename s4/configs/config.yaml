@@ -5,11 +5,11 @@ defaults:
   # - model: s4d # Model backbone
   # - pipeline: cifar # Specifies collection of configs, equivalent to next 5 lines
   # Pipelines should specify /loader, /dataset, /task, /encoder, /decoder (ideally in that order)
-  # # - loader: torch # Dataloader (e.g. handles batches)
-  # # - dataset: cifar # Defines the data (x and y pairs)
-  # # - task: multiclass_classification # Defines loss and metrics
-  # # - encoder: null # Interface between data and model
-  # # - decoder: null # Interface between model and targets
+  # - loader: torch # Dataloader (e.g. handles batches)
+  # - dataset: cifar # Defines the data (x and y pairs)
+  # - task: multiclass_classification # Defines loss and metrics
+  # - encoder: null # Interface between data and model
+  # - decoder: null # Interface between model and targets
   - callbacks:
       - base
       - checkpoint

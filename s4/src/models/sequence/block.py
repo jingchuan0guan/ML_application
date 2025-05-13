@@ -20,7 +20,7 @@ import src.utils.registry as registry
 class SequenceResidualBlock(SequenceModule):
     def __init__(
             self,
-            d_input,
+            d_input, # =d=d_model
             i_layer=None, # Only needs to be passed into certain residuals like Decay
             prenorm=True,
             dropout=0.0,

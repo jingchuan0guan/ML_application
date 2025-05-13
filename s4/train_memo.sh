@@ -17,3 +17,9 @@ nohup python -m train experiment=s4-lra-pathx model=s4d trainer.devices="[2]" lo
 nohup python -m train experiment=s4-lra-pathfinder model=s4 trainer.devices="[5]" model.layer.dt_max=0.001 > log_s4_path.out 2>&1 &
 nohup python -m train experiment=s4-lra-pathfinder model=s4d trainer.devices="[7]" model.layer.imag_scaling=linear model.layer.dt_max=0.001 > log_s4dlin_path.out 2>&1 &
 nohup python -m train experiment=s4-lra-pathfinder model=s4d trainer.devices="[4]" model.layer.imag_scaling=inverse model.layer.dt_max=0.001 > log_s4dinv_path.out 2>&1 &
+
+## new configs
+python -m train experiment=s4-lra-pathx-new model=s4d train.seed=1100 trainer.devices=[0,1] loader.batch_size=16 model.layer.eigvals_name=None model.layer.imag_scaling=inverse callbacks.model_checkpoint.save_top_k=-1
+# linear checkpoint.
+python -m train experiment=s4-lra-pathx-new model=s4d train.seed=1100 trainer.devices=[0,1] loader.batch_size=16 model.layer.eigvals_name=None model.layer.imag_scaling=linear callbacks.model_checkpoint.save_top_k=-1
+python -m train experiment=s4-lra-pathx-new model=s4d train.seed=1100 trainer.devices=[0,1] loader.batch_size=16 model.layer.eigvals_name=conjugate_linear model.layer.imag_scaling=None callbacks.model_checkpoint.save_top_k=-1

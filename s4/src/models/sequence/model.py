@@ -27,7 +27,7 @@ class SequenceModel(SequenceModule):
         transposed=False,
         dropout=0.0, # Residual dropout parameter
         prenorm=True,
-        layer=None, # layer config, must be specified
+        layer=None, # layer config, must be specified # This is the config!! not only the name of layer
         residual=None, # Residual config
         norm=None, # Normalization config (e.g. layer vs batch)
         pool=None,

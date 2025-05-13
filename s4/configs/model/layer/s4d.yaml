@@ -6,10 +6,10 @@ activation: gelu
 postact: null
 dropout: ${..dropout} # Same as null
 
-imag_scaling: linear # inverse
-# rho: 0.9
-# eigvals_name: conjugate_linear
-# n_conjugate: 2
+imag_scaling: None #inverse # linear
+rho: -1
+eigvals_name: conjugate_linear
+n_conjugate: 2
 
 dt_min: 0.001
 dt_max: 0.1

@@ -78,7 +78,7 @@ def instantiate(registry, config, *args, partial=False, wrap=None, **kwargs):
 
     # Retrieve the right constructor automatically based on type
     if isinstance(_target_, str):
-        fn = hydra.utils.get_method(path=_target_)
+        fn = hydra.utils.get_method(path=_target_) # here the class, function, ...are called
     elif isinstance(_target_, Callable):
         fn = _target_
     else:

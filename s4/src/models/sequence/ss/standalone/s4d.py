@@ -1,6 +1,5 @@
 """ Standalone version of Structured (Sequence) State Space (S4) model. """
 
-
 import logging
 from functools import partial
 import math
@@ -74,14 +73,19 @@ def roots_of_unity(n):
     return roots
 
 """ HiPPO utilities """
-def A_eigvals(N, H=1, rho=0.9, imag_scaling='inverse', eigvals_name="conjugate_linear", n_conjugate=2):
+def A_eigvals(N, H=1, rho=np.exp(-1/2), imag_scaling='inverse', eigvals_name="conjugate_linear", n_conjugate=2):
     dtype = torch.cfloat
     pi = torch.tensor(np.pi)
     
     n=N//2
     if eigvals_name in ["linear", "conjugate_linear"]:
+        if rho>0:
+            rho_ = rho
+        else:
+            rho_ = np.exp(-1/2)
+        
         if eigvals_name == "linear":
-            w = torch.arange(n)
+            w = torch.arange(1,n+1)/n
         elif eigvals_name == "conjugate_linear":
             q = n % n_conjugate
             if q>0:
@@ -96,7 +100,10 @@ def A_eigvals(N, H=1, rho=0.9, imag_scaling='inverse', eigvals_name="conjugate_l
             # print(w)
             w = torch.cat(w, dim=0).to(dtype)
             print("n p q", n, p,q)
-    w = repeat(-rho * w, 'n -> h n', h=H)
+        print("rho", rho_)
+        w = torch.log(rho_ * w)
+        w = repeat(w, 'n -> h n', h=H)
+        # w = repeat(w, 'n -> h n', h=H)
 
     if imag_scaling in ['random', 'linear', 'inverse']:
         real_part = .5 * torch.ones(H, N//2)
@@ -127,6 +134,7 @@ class SSKernelDiag(nn.Module):
         self,
         w, C, log_dt,
         lr=None,
+        **kernel_args,
     ):
 
         super().__init__()

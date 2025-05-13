@@ -37,7 +37,7 @@ class Linear(Module):
         self.bias = self.rnd.uniform(-bias, bias, (output_dim,)).astype(self.dtype)
 
     def __call__(self, x: np.ndarray):
-        # print(self.weight.shape, x.shape, self.bias.shape)
+        # print("weight",self.weight.shape, "  x",x.shape, "  bias",self.bias.shape)
         out = x @ self.weight.T + self.bias
         return out
 
@@ -175,59 +175,13 @@ class BatchLR_Optimizer_Readout(Linear):
         return self.weight, self.bias
 
 
-# choose one of the two
-# def net_out_batch_last_state(net, w_in, w_out, x0, T, batch_size, dataloader, num_patch, readout_f=1, train=False):
-#     y_out_arr, pre_arr, acc_arr, nrmse_arr = [],[],[],[]
-#     for idx in trange(T):
-#         datas, labels = dataloader.__next__()
-#         x=x0
-#         # print("x", x.shape)
-#         for p_rep in range(num_patch):
-#             x = net(x, w_in(datas[..., p_rep, :]))
-#         if readout_f>1:
-#             x = np.concatenate([x, x**2], axis=1)
-        
-#         if train:
-#             learned_w = w_out.train(x, labels)
-        
-#         y_out = w_out(x)
-#         pre = np.round(y_out).astype(int)
-#         acc = np.sum(pre == labels)/labels.shape[0]
-#         nrmse = calc_batch_nrmse(labels, y_out)
-#         y_out_arr.append(y_out), pre_arr.append(pre), acc_arr.append(acc), nrmse_arr.append(nrmse)
-#     return y_out_arr, pre_arr, acc_arr, nrmse_arr
-
-# def net_out_batch_all_states(net, w_in, w_out, x0, T, batch_size, dataloader, num_patch, readout_f=1, train=False,):
-#     y_out_arr, pre_arr, acc_arr, nrmse_arr = [],[],[],[]
-#     for idx in trange(T):
-#         xs = np.zeros((*x0.shape[:-1], num_patch, x0.shape[-1]))
-#         print("xs shape: ", xs.shape)
-#         datas, labels = dataloader.__next__()
-#         x=x0
-#         for p_rep in range(num_patch):
-#             x = net(x, w_in(datas[..., p_rep, :]))
-#             xs[..., p_rep, :]=x
-#         xs = xs.reshape(batch_size, -1)
-#         print("xs shape: ", xs.shape)
-#         if readout_f>1:
-#             xs = np.concatenate([xs, xs**2], axis=1)
-#         print("xs shape: ", xs.shape)
-#         if train:
-#             learned_w = w_out.train(xs, labels)
-        
-#         y_out = w_out(xs)
-#         pre = np.round(y_out).astype(int)
-#         acc = np.sum(pre == labels)/labels.shape[0]
-#         nrmse = calc_batch_nrmse(labels, y_out)
-#         y_out_arr.append(y_out), pre_arr.append(pre), acc_arr.append(acc), nrmse_arr.append(nrmse)
-#     return np.array(y_out_arr), np.array(pre_arr), np.array(acc_arr), np.array(nrmse_arr)
-
 def net_out_batch_all_states(net, w_in, w_out, x0, T, batch_size, dataloader, num_patch, learning_type, readout_f="1", train=False,):
     y_out_arr, pre_arr, acc_arr, nrmse_arr = [],[],[],[]
     for idx in trange(T):
         xs = np.zeros((*x0.shape[:-1], num_patch, x0.shape[-1]))
         print("xs shape: ", xs.shape)
         datas, labels = dataloader.__next__()
+        datas = datas.reshape(*datas.shape[:-2], num_patch, -1)
         x=x0
         for p_rep in range(num_patch):
             x = net(x, w_in(datas[..., p_rep, :]))
@@ -267,14 +221,12 @@ def train_and_eval(
     for idx in trange(t_washout):
         x0 = net(x0, w_in(np.zeros((batch_size, w_in.input_dim))) )
     
+    print("train start")
     train_out=net_out_batch_all_states(
-        net, w_in, w_out, x0, t_train, batch_size, dataloader, num_patch, learning_type, readout_f, train=True,)
+        net, w_in, w_out, x0, t_train, batch_size, dataloader, num_patch,
+        learning_type, readout_f, train=True,)
+    print("valid start")
     valid_out=net_out_batch_all_states(
-        net, w_in, w_out, x0, t_eval, batch_size, dataloader, num_patch, learning_type, readout_f, train=False,)
-    # if learning_type=="last_state":
-    #     train_out=net_out_batch_last_state(net, w_in, w_out, x0, t_train, batch_size, dataloader, num_patch, readout_f, train=True,)
-    #     valid_out=net_out_batch_last_state(net, w_in, w_out, x0, t_eval, batch_size, dataloader, num_patch, readout_f, train=False,)
-    # if learning_type=="all_states":
-    #     train_out=net_out_batch_all_states(net, w_in, w_out, x0, t_train, batch_size, dataloader, num_patch, readout_f, train=True,)
-    #     valid_out=net_out_batch_all_states(net, w_in, w_out, x0, t_eval, batch_size, dataloader, num_patch, readout_f, train=False,)
+        net, w_in, w_out, x0, t_eval, batch_size, dataloader, num_patch,
+        learning_type, readout_f, train=False,)
     return train_out, valid_out

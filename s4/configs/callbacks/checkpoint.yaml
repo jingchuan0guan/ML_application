@@ -8,7 +8,7 @@ model_checkpoint:
   # this saves an annoying "epoch=12" which makes it annoying to pass on the command line; epochs are being logged through the verbose flag and logger anyways
   # seems like you can override the '.format_checkpoint_name' method of ModelCheckpoint to change this, but not worth
   # filename: "{epoch:02d}",
-  filename: ${train.monitor}
+  filename: "epoch={epoch:02d}-metric={${train.monitor}:.4f}"
   auto_insert_metric_name: False
   verbose: True
 
